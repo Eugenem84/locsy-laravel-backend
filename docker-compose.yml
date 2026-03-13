@@ -1,0 +1,35 @@
+services:
+  # Сервис приложения (PHP-FPM + Nginx)
+  app:
+    image: 'webdevops/php-nginx:8.2'
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/app
+    working_dir: /app
+    # Явно указываем Nginx, где находится публичная папка Laravel
+    environment:
+      - WEB_DOCUMENT_ROOT=/app/public
+    # Подключаем остальные переменные из .env файла
+    env_file:
+      - .env
+
+  # Сервис базы данных (PostgreSQL)
+  db:
+    image: 'postgres:15'
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_DB_PORT:-5432}:5432"
+    volumes:
+      - 'locsy_postgres_data:/var/lib/postgresql/data'
+    # Переменные для создания базы данных
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+# Docker Volume для сохранения данных БД
+volumes:
+  locsy_postgres_data:
+    driver: local
