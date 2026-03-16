@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Location extends Model
 {
@@ -27,5 +28,13 @@ class Location extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Location::class, 'parent_id');
+    }
+
+    /**
+     * Получить все фотографии для данной локации.
+     */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(Photo::class);
     }
 }

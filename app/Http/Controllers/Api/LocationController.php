@@ -10,7 +10,8 @@ class LocationController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Location::with('city');
+        // Добавляем жадную загрузку фотографий
+        $query = Location::with('city', 'photos');
 
         if ($request->has('city_id')) {
             $query->where('city_id', $request->input('city_id'));
@@ -21,11 +22,9 @@ class LocationController extends Controller
 
     public function show($id)
     {
-        $location = Location::find($id);
-
-        if (!$location) {
-            return response()->json(['message' => 'Location not found'], 404);
-        }
+        // Находим локацию с ее фотографиями
+        // findOrFail автоматически вернет 404, если локация не найдена
+        $location = Location::with('photos')->findOrFail($id);
 
         return $location;
     }
