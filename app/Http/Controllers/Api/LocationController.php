@@ -18,4 +18,15 @@ class LocationController extends Controller
 
         return $query->get();
     }
+
+    public function show($id)
+    {
+        $location = Location::find($id);
+
+        if (!$location) {
+            return response()->json(['message' => 'Location not found'], 404);
+        }
+
+        return $location;
+    }
 }

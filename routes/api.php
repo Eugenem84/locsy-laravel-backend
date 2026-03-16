@@ -7,3 +7,4 @@ use Illuminate\Support\Facades\Route;
 Route::get('/cities', [CityController::class, 'index']);
 
 Route::get('/locations', [LocationController::class, 'index']);
+Route::get('/location/{id}', [LocationController::class, 'show']);
