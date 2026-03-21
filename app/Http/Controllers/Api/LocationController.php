@@ -28,4 +28,22 @@ class LocationController extends Controller
 
         return $location;
     }
+
+    public function getLocationsByBounds(Request $request) {
+        // Валидация, что все 4 параметра пришли
+        $request->validate([
+            'sw_lat' => 'required|numeric',
+            'sw_lng' => 'required|numeric',
+            'ne_lat' => 'required|numeric',
+            'ne_lng' => 'required|numeric',
+        ]);
+
+        $locations = Location::whereBetween('latitude', [$request->sw_lat, $request->ne_lat])
+            ->whereBetween('longitude', [$request->sw_lng, $request->ne_lng])
+            ->limit(100) // Обязательно добавьте лимит!
+            ->get();
+
+        return response()->json($locations);
+    }
+
 }

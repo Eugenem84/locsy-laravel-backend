@@ -20,3 +20,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/locations/{location}/favorite', [FavoriteController::class, 'remove']);
     Route::get('/favorites', [FavoriteController::class, 'list']);
 });
+
+Route::get('/locations/by-bounds', [LocationController::class, 'getLocationsByBounds']);
