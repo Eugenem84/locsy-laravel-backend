@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -13,10 +14,6 @@ class AuthController extends Controller
 {
     /**
      * Handle a registration request.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     * @throws ValidationException
      */
     public function register(Request $request)
     {
@@ -27,7 +24,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            throw new ValidationException($validator);
         }
 
         $user = User::create([
@@ -40,5 +37,26 @@ class AuthController extends Controller
             'message' => 'User registered successfully',
             'user' => $user
         ], 201);
+    }
+
+    /**
+     * Handle a login request.
+     */
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            throw ValidationException::withMessages([
+                'email' => [__('auth.failed')],
+            ]);
+        }
+
+        $request->session()->regenerate();
+
+        return response()->noContent();
     }
 }
