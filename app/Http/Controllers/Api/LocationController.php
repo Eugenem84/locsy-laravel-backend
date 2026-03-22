@@ -38,7 +38,7 @@ class LocationController extends Controller
             'ne_lng' => 'required|numeric',
         ]);
 
-        $locations = Location::whereBetween('latitude', [$request->sw_lat, $request->ne_lat])
+        $locations = Location::with('photos')->whereBetween('latitude', [$request->sw_lat, $request->ne_lat])
             ->whereBetween('longitude', [$request->sw_lng, $request->ne_lng])
             ->limit(100) // Обязательно добавьте лимит!
             ->get();
