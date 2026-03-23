@@ -12,9 +12,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            CitySeeder::class,
-            LocationSeeder::class,
-            PhotoSeeder::class, // <-- Регистрируем сидер фотографий
+            Admin1CodesSeeder::class,
+            CitiesTableSeeder::class,
         ]);
     }
 }

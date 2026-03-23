@@ -3,71 +3,68 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\City;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CityController extends Controller
 {
     public function index(Request $request)
     {
-        $query = City::where('country_code', 'RU')
-                     ->where('population', '>', 100000);
+        // Возвращаемся к более строгой и явной форме LEFT JOIN
+        $query = DB::table('cities')
+            ->leftJoin('admin1_codes', function ($join) {
+                $join->on('cities.admin1_code', '=', 'admin1_codes.admin1_code')
+                     ->on('cities.country_code', '=', 'admin1_codes.country_code');
+            })
+            ->where('cities.country_code', 'RU')
+            ->where('cities.population', '>', 100000)
+            ->select('cities.*', 'admin1_codes.name as region_name');
+
 
         if ($request->has('search')) {
             $searchTerm = $request->input('search');
             $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'like', "%{$searchTerm}%")
-                  ->orWhere('alternatenames', 'like', "%{$searchTerm}%");
+                $q->where('cities.name', 'like', "%{$searchTerm}%")
+                    ->orWhere('cities.alternatenames', 'like', "%{$searchTerm}%")
+                    ->orWhere('admin1_codes.name', 'like', "%{$searchTerm}%");
             });
         }
 
         $cities = $query->get();
 
         $cities->transform(function ($city) {
-            if (empty($city->alternatenames)) {
-                return $city;
-            }
+            $cityName = $city->name; // Изначально - латинское имя
 
-            $alternateNames = explode(',', $city->alternatenames);
+            if (!empty($city->alternatenames)) {
+                $alternateNames = explode(',', $city->alternatenames);
+                $russianNames = array_filter($alternateNames, function ($name) {
+                    return preg_match('/^[а-яА-ЯёЁ\s\-]+$/u', $name);
+                });
 
-            // 1. Найти все кириллические варианты
-            $cyrillicNames = array_filter($alternateNames, function ($name) {
-                return preg_match('/[а-яА-ЯЁё]/u', $name);
-            });
-
-            if (empty($cyrillicNames)) {
-                return $city;
-            }
-
-            // 2. Отфильтровать только те, что содержат исключительно русские буквы
-            $russianNames = array_filter($cyrillicNames, function ($name) {
-                // Этот regex проверяет, что строка состоит только из русских букв, пробелов и дефисов
-                return preg_match('/^[а-яА-ЯёЁ\s\-]+$/u', $name);
-            });
-
-            $bestName = null;
-
-            if (!empty($russianNames)) {
-                // 3. Если есть чисто русские имена, выбираем лучшее из них
-                $bestMatchScore = -1;
-                foreach ($russianNames as $name) {
-                    $transliteratedName = Str::ascii($name);
-                    similar_text(strtolower($city->asciiname), strtolower($transliteratedName), $score);
-
-                    if ($score > $bestMatchScore) {
-                        $bestMatchScore = $score;
-                        $bestName = $name;
+                $bestName = null;
+                if (!empty($russianNames)) {
+                    $bestMatchScore = -1;
+                    foreach ($russianNames as $name) {
+                        $transliteratedName = Str::ascii($name);
+                        similar_text(strtolower($city->asciiname), strtolower($transliteratedName), $score);
+                        if ($score > $bestMatchScore) {
+                            $bestMatchScore = $score;
+                            $bestName = $name;
+                        }
                     }
+                }
+                if ($bestName) {
+                    $cityName = $bestName;
                 }
             }
 
-            // 4. Если нашли подходящее имя, подставляем его
-            if ($bestName) {
-                $city->name = $bestName;
+            // Формируем новое имя, только если регион найден
+            if (!empty($city->region_name)) {
+                $city->name = $cityName . ' (' . $city->region_name . ')';
+            } else {
+                $city->name = $cityName;
             }
-            // Если чисто русских имен не нашлось, оставляем оригинальное имя ($city->name),
-            // чтобы избежать вывода "Тулă" и подобных.
 
             return $city;
         });
