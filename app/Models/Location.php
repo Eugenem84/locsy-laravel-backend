@@ -19,6 +19,7 @@ class Location extends Model
         'description',
         'latitude',
         'longitude',
+        'user_id',
     ];
 
     public function city(): BelongsTo
@@ -42,5 +43,10 @@ class Location extends Model
     public function favoritedBy(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_favorite_locations');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Location;
+use App\Models\Photo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class LocationController extends Controller
 {
@@ -46,4 +49,37 @@ class LocationController extends Controller
         return response()->json($locations);
     }
 
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'city_id' => 'required|exists:cities,id',
+            'photos' => 'nullable|array',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        $location = Location::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'city_id' => $request->city_id,
+            'user_id' => Auth::id(),
+        ]);
+
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $photoFile) {
+                $path = $photoFile->store('locations', 'public');
+                Photo::create([
+                    'location_id' => $location->id,
+                    'path' => $path,
+                ]);
+            }
+        }
+
+        return response()->json($location->load('photos'), 201);
+    }
 }
