@@ -16,11 +16,36 @@ class CitiesTableSeeder extends Seeder
      */
     public function run(): void
     {
-        // Путь к файлу
+        // Список стран для загрузки. Для текущего кейса оставляем только РФ.
+        $allowedCountries = ['RU'];
+        $allowedCountrySet = array_fill_keys($allowedCountries, true);
+
+        // Только населенные пункты (города/поселения), без районов и прочих ADM*.
+        $allowedFeatureCodes = array_fill_keys([
+            'PPL',
+            'PPLA',
+            'PPLA2',
+            'PPLA3',
+            'PPLA4',
+            'PPLC',
+        ], true);
+
         $path = database_path('seeders/citiesTXT/cities15000.txt');
 
         if (!File::exists($path)) {
             $this->command->error('File not found: database/seeders/citiesTXT/cities15000.txt');
+            return;
+        }
+
+        $validAdmin1 = DB::table('admin1_codes')
+            ->select('country_code', 'admin1_code')
+            ->whereIn('country_code', $allowedCountries)
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->country_code . '.' . $row->admin1_code => true])
+            ->all();
+
+        if (empty($validAdmin1)) {
+            $this->command->error('admin1_codes is empty for selected countries. Seed admin1_codes first.');
             return;
         }
 
@@ -45,6 +70,27 @@ class CitiesTableSeeder extends Seeder
 
             // Пропускаем строки, где не хватает данных
             if (count($data) < 19) {
+                $progressBar->advance();
+                continue;
+            }
+
+            $countryCode = $data[8];
+            $featureClass = $data[6];
+            $featureCode = $data[7];
+            $admin1Code = $data[10];
+
+            if (!isset($allowedCountrySet[$countryCode])) {
+                $progressBar->advance();
+                continue;
+            }
+
+            if ($featureClass !== 'P' || !isset($allowedFeatureCodes[$featureCode])) {
+                $progressBar->advance();
+                continue;
+            }
+
+            if (!isset($validAdmin1[$countryCode . '.' . $admin1Code])) {
+                $progressBar->advance();
                 continue;
             }
 
@@ -56,11 +102,11 @@ class CitiesTableSeeder extends Seeder
                 'geonameid'         => $data[0],
                 'asciiname'         => $data[2],
                 'alternatenames'    => $data[3],
-                'feature_class'     => $data[6],
-                'feature_code'      => $data[7],
-                'country_code'      => $data[8],
+                'feature_class'     => $featureClass,
+                'feature_code'      => $featureCode,
+                'country_code'      => $countryCode,
                 'cc2'               => $data[9],
-                'admin1_code'       => $data[10],
+                'admin1_code'       => $admin1Code,
                 'admin2_code'       => $data[11],
                 'population'        => $data[14],
                 'timezone'          => $data[17],
