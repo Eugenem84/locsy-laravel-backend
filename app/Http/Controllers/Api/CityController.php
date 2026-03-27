@@ -34,11 +34,12 @@ class CityController extends Controller
         if ($request->has('search')) {
             $searchTerm = $request->input('search');
             $query->where(function ($q) use ($searchTerm) {
-                $q->where('cities.name', 'like', "%{$searchTerm}%")
-                    ->orWhere('cities.alternatenames', 'like', "%{$searchTerm}%")
-                    ->orWhere('admin1_codes.name', 'like', "%{$searchTerm}%")
+                $lowerSearchTerm = mb_strtolower($searchTerm, 'UTF-8');
+                $q->whereRaw('LOWER(cities.name) LIKE ?', ["%{$lowerSearchTerm}%"])
+                    ->orWhereRaw('LOWER(cities.alternatenames) LIKE ?', ["%{$lowerSearchTerm}%"])
+                    ->orWhereRaw('LOWER(admin1_codes.name) LIKE ?', ["%{$lowerSearchTerm}%"])
                     // Добавляем поиск по переведенным названиям регионов
-                    ->orWhere('admin1_code_translations.name', 'like', "%{$searchTerm}%");
+                    ->orWhereRaw('LOWER(admin1_code_translations.name) LIKE ?', ["%{$lowerSearchTerm}%"]);
             });
         }
 
