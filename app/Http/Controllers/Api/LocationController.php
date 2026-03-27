@@ -8,6 +8,9 @@ use App\Models\Photo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class LocationController extends Controller
 {
@@ -58,7 +61,8 @@ class LocationController extends Controller
             'longitude' => 'required|numeric',
             'city_id' => 'required|exists:cities,id',
             'photos' => 'nullable|array',
-            'photos.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            // Allow common image formats, but remove size limit and SVG
+            'photos.*' => 'image|mimes:jpeg,png,jpg,gif',
         ]);
 
         $location = Location::create([
@@ -71,8 +75,30 @@ class LocationController extends Controller
         ]);
 
         if ($request->hasFile('photos')) {
+            // Create an image manager instance with GD driver
+            $manager = new ImageManager(new Driver());
+
             foreach ($request->file('photos') as $photoFile) {
-                $path = $photoFile->store('locations', 'public');
+                // Read image from uploaded file
+                $image = $manager->read($photoFile);
+
+                // Resize image if its width is greater than 3840px, maintaining aspect ratio
+                if ($image->width() > 3840) {
+                    $image->scale(width: 3840);
+                }
+
+                if($image->height() > 2048) {
+                    $image->scale(height: 2048);
+                }
+
+                // Generate a unique name, forcing jpg extension
+                $filename = Str::random(40) . '.jpg';
+                $path = 'locations/' . $filename;
+
+                // Encode the image to JPEG format (quality 80) and save to public storage
+                $encodedImage = $image->toJpeg(80);
+                Storage::disk('public')->put($path, (string) $encodedImage);
+
                 Photo::create([
                     'location_id' => $location->id,
                     'path' => $path,
