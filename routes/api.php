@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\PhotoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,4 +21,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/locations/{location}/favorite', [FavoriteController::class, 'add']);
     Route::delete('/locations/{location}/favorite', [FavoriteController::class, 'remove']);
     Route::get('/favorites', [FavoriteController::class, 'list']);
+    Route::post('/locations/{location}/photos', [PhotoController::class, 'store']);
 });
