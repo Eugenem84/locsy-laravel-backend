@@ -11,15 +11,24 @@ class CityController extends Controller
 {
     public function index(Request $request)
     {
-        // Возвращаемся к более строгой и явной форме LEFT JOIN
+        $locale = 'ru'; // Устанавливаем локаль для переводов
+
         $query = DB::table('cities')
             ->leftJoin('admin1_codes', function ($join) {
                 $join->on('cities.admin1_code', '=', 'admin1_codes.admin1_code')
-                     ->on('cities.country_code', '=', 'admin1_codes.country_code');
+                    ->on('cities.country_code', '=', 'admin1_codes.country_code');
+            })
+            ->leftJoin('admin1_code_translations', function ($join) use ($locale) {
+                $join->on('admin1_codes.id', '=', 'admin1_code_translations.admin1_code_id')
+                    ->where('admin1_code_translations.locale', '=', $locale);
             })
             ->where('cities.country_code', 'RU')
             ->where('cities.population', '>', 100000)
-            ->select('cities.*', 'admin1_codes.name as region_name');
+            ->select(
+                'cities.*',
+                // Используем COALESCE, чтобы выбрать русский перевод, если он есть, иначе - английское название
+                DB::raw('COALESCE(admin1_code_translations.name, admin1_codes.name) as region_name')
+            );
 
 
         if ($request->has('search')) {
@@ -27,7 +36,9 @@ class CityController extends Controller
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('cities.name', 'like', "%{$searchTerm}%")
                     ->orWhere('cities.alternatenames', 'like', "%{$searchTerm}%")
-                    ->orWhere('admin1_codes.name', 'like', "%{$searchTerm}%");
+                    ->orWhere('admin1_codes.name', 'like', "%{$searchTerm}%")
+                    // Добавляем поиск по переведенным названиям регионов
+                    ->orWhere('admin1_code_translations.name', 'like', "%{$searchTerm}%");
             });
         }
 
@@ -60,6 +71,7 @@ class CityController extends Controller
             }
 
             // Формируем новое имя, только если регион найден
+            // Теперь region_name будет содержать русский перевод
             if (!empty($city->region_name)) {
                 $city->name = $cityName . ' (' . $city->region_name . ')';
             } else {

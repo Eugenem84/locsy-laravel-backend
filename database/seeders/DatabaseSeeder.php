@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             Admin1CodesSeeder::class,
             CitiesTableSeeder::class,
+            Admin1CodeTranslationSeeder::class,
         ]);
     }
 }
