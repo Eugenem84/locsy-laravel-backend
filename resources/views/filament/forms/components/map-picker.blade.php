@@ -20,6 +20,7 @@
             lngStatePath: @js($lngStatePath)
         })"
         x-init="init()"
+        style="z-index: 0;"
         class="w-full h-96 rounded-lg"
         id="map"
     ></div>
