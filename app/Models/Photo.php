@@ -19,6 +19,7 @@ class Photo extends Model
         'location_id',
         'path',
         'is_main',
+        'user_id',
     ];
 
     protected $appends = ['full_url'];
@@ -26,6 +27,11 @@ class Photo extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

@@ -22,4 +22,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/locations/{location}/favorite', [FavoriteController::class, 'remove']);
     Route::get('/favorites', [FavoriteController::class, 'list']);
     Route::post('/locations/{location}/photos', [PhotoController::class, 'store']);
+    Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
 });

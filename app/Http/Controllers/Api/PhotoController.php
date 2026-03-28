@@ -49,11 +49,24 @@ class PhotoController extends Controller
 
                 Photo::create([
                     'location_id' => $location->id,
+                    'user_id' => auth()->id(),
                     'path' => $path,
                 ]);
             }
         }
 
         return response()->json($photos, 201);
+    }
+
+    public function destroy(Photo $photo)
+    {
+        if (auth()->id() !== $photo->user_id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        Storage::disk('public')->delete($photo->path);
+        $photo->delete();
+
+        return response()->noContent();
     }
 }

@@ -30,7 +30,7 @@ class LocationController extends Controller
     {
         // Находим локацию с ее фотографиями
         // findOrFail автоматически вернет 404, если локация не найдена
-        $location = Location::with('photos')->findOrFail($id);
+        $location = Location::with('photos.user')->findOrFail($id);
 
         return $location;
     }
