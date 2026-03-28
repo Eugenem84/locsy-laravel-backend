@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LocationResource\Pages;
+use App\Forms\Components\MapPicker;
 use App\Models\Location;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -22,21 +23,35 @@ class LocationResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpanFull(),
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('latitude')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('longitude')
-                    ->required()
-                    ->numeric(),
                 Forms\Components\Select::make('city_id')
                     ->relationship('city', 'name')
                     ->required(),
                 Forms\Components\Select::make('user_id')
                     ->relationship('user', 'name')
                     ->required(),
+
+                // Our new map component
+                MapPicker::make('location')
+                    ->label('Location on map')
+                    ->latitude('latitude') // Connects to 'latitude' field
+                    ->longitude('longitude') // Connects to 'longitude' field
+                    ->columnSpanFull(),
+
+                // Hidden latitude and longitude fields
+                Forms\Components\TextInput::make('latitude')
+                    ->required()
+                    ->numeric()
+                    ->reactive() // Important for live updates
+                    ->label('Latitude'),
+                Forms\Components\TextInput::make('longitude')
+                    ->required()
+                    ->numeric()
+                    ->reactive() // Important for live updates
+                    ->label('Longitude'),
             ]);
     }
 
