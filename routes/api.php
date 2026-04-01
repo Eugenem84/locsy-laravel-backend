@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\LocationController;
@@ -23,4 +24,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/favorites', [FavoriteController::class, 'list']);
     Route::post('/locations/{location}/photos', [PhotoController::class, 'store']);
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
+    Route::put('/user/city', [AuthController::class, 'updateUserCity']);
 });

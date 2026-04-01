@@ -80,4 +80,24 @@ class AuthController extends Controller
 
         return response()->noContent();
     }
+
+    public function updateUserCity(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'city_id' => ['required', 'exists:cities,id'],
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        $user = Auth::user();
+        $user->city_id = $request->city_id;
+        $user->save();
+
+        return response()->json([
+            'message' => 'User city updated successfully',
+            'user' => $user
+        ]);
+    }
 }
