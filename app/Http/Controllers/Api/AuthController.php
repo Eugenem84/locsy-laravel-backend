@@ -21,6 +21,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'city_id' => ['required', 'exists:cities,id'],
         ]);
 
         if ($validator->fails()) {
@@ -31,6 +32,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'city_id' => $request->city_id,
         ]);
 
         return response()->json([
@@ -56,6 +58,11 @@ class AuthController extends Controller
         }
 
         $request->session()->regenerate();
+
+        $user = Auth::user();
+        if ($user->city) {
+            $request->session()->put('city', $user->city);
+        }
 
         return response()->noContent();
     }

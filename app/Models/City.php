@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class City extends Model
 {
@@ -12,41 +12,17 @@ class City extends Model
 
     protected $fillable = [
         'name',
-        'slug',
+        'country_code',
+        'admin1_code',
         'latitude',
         'longitude',
-        'geonameid',
-        'asciiname',
-        'alternatenames',
-        'feature_class',
-        'feature_code',
-        'country_code',
-        'cc2',
-        'admin1_code',
-        'admin2_code',
         'population',
-        'timezone',
-        'modification_date',
+        'alternatenames',
+        'asciiname',
     ];
 
-    /**
-     * Get the region associated with the city.
-     */
-    public function region()
+    public function users(): HasMany
     {
-        return $this->belongsTo(Admin1Code::class, 'admin1_code', 'admin1_code')
-                    ->where('country_code', $this->country_code);
-    }
-
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($city) {
-            if (empty($city->slug)) {
-                $city->slug = Str::slug($city->name);
-            }
-        });
+        return $this->hasMany(User::class);
     }
 }
