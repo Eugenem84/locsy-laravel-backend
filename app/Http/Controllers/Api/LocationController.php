@@ -41,7 +41,7 @@ class LocationController extends Controller
     {
         // Находим локацию с ее фотографиями и категориями
         // findOrFail автоматически вернет 404, если локация не найдена
-        $location = Location::with(['photos.user', 'categories'])->findOrFail($id);
+        $location = Location::with(['photos.user.photographerProfile', 'categories'])->findOrFail($id);
 
         return $location;
     }
@@ -123,7 +123,7 @@ class LocationController extends Controller
 
                 // Generate a unique name, forcing jpg extension
                 $filename = Str::random(40) . '.jpg';
-                $path = 'locations/' . $filename;
+                $path = 'locations/' . filename;
 
                 // Encode the image to JPEG format (quality 80) и сохраняем в публичное хранилище
                 $encodedImage = $image->toJpeg(80);
@@ -131,6 +131,7 @@ class LocationController extends Controller
 
                 Photo::create([
                     'location_id' => $location->id,
+                    'user_id' => Auth::id(),
                     'path' => $path,
                 ]);
             }

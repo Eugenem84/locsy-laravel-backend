@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -29,6 +30,7 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'city_id',
+        'is_photographer',
     ];
 
     /**
@@ -67,6 +69,11 @@ class User extends Authenticatable implements FilamentUser
     public function city(): BelongsTo
     {
         return $this->belongsTo(City::class);
+    }
+
+    public function photographerProfile(): HasOne
+    {
+        return $this->hasOne(PhotographerProfile::class);
     }
 
     public function canAccessPanel(Panel $panel): bool

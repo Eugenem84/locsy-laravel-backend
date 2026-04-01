@@ -100,4 +100,10 @@ class AuthController extends Controller
             'user' => $user
         ]);
     }
+
+    public function user(Request $request)
+    {
+        $user = Auth::user()->load('photographerProfile');
+        return response()->json($user);
+    }
 }
