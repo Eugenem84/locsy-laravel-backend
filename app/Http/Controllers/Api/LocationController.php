@@ -16,11 +16,22 @@ class LocationController extends Controller
 {
     public function index(Request $request)
     {
-        // Добавляем жадную загрузку фотографий
-        $query = Location::with('city', 'photos');
+        // Добавляем жадную загрузку фотографий и категорий
+        $query = Location::with('city', 'photos', 'categories');
 
         if ($request->has('city_id')) {
             $query->where('city_id', $request->input('city_id'));
+        }
+
+        // Фильтрация по категориям
+        if ($request->has('category_ids')) {
+            $categoryIds = is_array($request->category_ids)
+                ? $request->category_ids
+                : explode(',', $request->category_ids);
+
+            $query->whereHas('categories', function($q) use ($categoryIds) {
+                $q->whereIn('categories.id', $categoryIds);
+            });
         }
 
         return $query->get();
@@ -44,10 +55,22 @@ class LocationController extends Controller
             'ne_lng' => 'required|numeric',
         ]);
 
-        $locations = Location::with('photos')->whereBetween('latitude', [$request->sw_lat, $request->ne_lat])
-            ->whereBetween('longitude', [$request->sw_lng, $request->ne_lng])
-            ->limit(100) // Обязательно добавьте лимит!
-            ->get();
+        $query = Location::with(['photos', 'categories'])
+            ->whereBetween('latitude', [$request->sw_lat, $request->ne_lat])
+            ->whereBetween('longitude', [$request->sw_lng, $request->ne_lng]);
+
+        // Фильтрация по категориям
+        if ($request->has('category_ids')) {
+            $categoryIds = is_array($request->category_ids)
+                ? $request->category_ids
+                : explode(',', $request->category_ids);
+
+            $query->whereHas('categories', function($q) use ($categoryIds) {
+                $q->whereIn('categories.id', $categoryIds);
+            });
+        }
+
+        $locations = $query->limit(100)->get();
 
         return response()->json($locations);
     }
@@ -60,6 +83,8 @@ class LocationController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'city_id' => 'required|exists:cities,id',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'exists:categories,id',
             'photos' => 'nullable|array',
             // Allow common image formats, but remove size limit and SVG
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif',
@@ -73,6 +98,11 @@ class LocationController extends Controller
             'city_id' => $request->city_id,
             'user_id' => Auth::id(),
         ]);
+
+        // Прикрепляем категории, если они были переданы
+        if ($request->has('category_ids')) {
+            $location->categories()->sync($request->category_ids);
+        }
 
         if ($request->hasFile('photos')) {
             // Create an image manager instance with GD driver
@@ -95,7 +125,7 @@ class LocationController extends Controller
                 $filename = Str::random(40) . '.jpg';
                 $path = 'locations/' . $filename;
 
-                // Encode the image to JPEG format (quality 80) and save to public storage
+                // Encode the image to JPEG format (quality 80) и сохраняем в публичное хранилище
                 $encodedImage = $image->toJpeg(80);
                 Storage::disk('public')->put($path, (string) $encodedImage);
 
@@ -106,6 +136,6 @@ class LocationController extends Controller
             }
         }
 
-        return response()->json($location->load('photos'), 201);
+        return response()->json($location->load(['photos', 'categories']), 201);
     }
 }

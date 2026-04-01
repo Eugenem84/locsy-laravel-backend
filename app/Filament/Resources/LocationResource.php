@@ -35,6 +35,14 @@ class LocationResource extends Resource
                     ->relationship('user', 'name')
                     ->required(),
 
+                // Поле для выбора категорий
+                Forms\Components\Select::make('categories')
+                    ->relationship('categories', 'name')
+                    ->multiple()
+                    ->preload()
+                    ->searchable()
+                    ->columnSpanFull(),
+
                 // Our new map component
                 MapPicker::make('location')
                     ->label('Location on map')
@@ -64,6 +72,9 @@ class LocationResource extends Resource
                 Tables\Columns\TextColumn::make('description')->limit(50),
                 Tables\Columns\TextColumn::make('city.name'),
                 Tables\Columns\TextColumn::make('user.name'),
+                Tables\Columns\TextColumn::make('categories.name')
+                    ->badge()
+                    ->color('primary'),
             ])
             ->filters([
                 //
