@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             Admin1CodesSeeder::class,
             CitiesTableSeeder::class,
             Admin1CodeTranslationSeeder::class,
+            CategorySeeder::class,
         ]);
     }
 }

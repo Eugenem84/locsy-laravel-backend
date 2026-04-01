@@ -28,9 +28,9 @@ class LocationController extends Controller
 
     public function show($id)
     {
-        // Находим локацию с ее фотографиями
+        // Находим локацию с ее фотографиями и категориями
         // findOrFail автоматически вернет 404, если локация не найдена
-        $location = Location::with('photos.user')->findOrFail($id);
+        $location = Location::with(['photos.user', 'categories'])->findOrFail($id);
 
         return $location;
     }

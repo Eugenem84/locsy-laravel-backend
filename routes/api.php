@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\LocationController;
@@ -16,6 +17,7 @@ Route::get('/locations/by-bounds', [LocationController::class, 'getLocationsByBo
 Route::get('/locations', [LocationController::class, 'index']);
 Route::get('/location/{id}', [LocationController::class, 'show']);
 Route::apiResource('cities', CityController::class)->only(['index']);
+Route::apiResource('categories', CategoryController::class)->only(['index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('locations', [LocationController::class, 'store']);
