@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LocationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\Photo;
@@ -17,7 +18,8 @@ class LocationController extends Controller
     public function index(Request $request)
     {
         // Добавляем жадную загрузку фотографий и категорий
-        $query = Location::with('city', 'photos', 'categories');
+        $query = Location::with('city', 'photos', 'categories')
+            ->where('status', LocationStatus::Approved);
 
         if ($request->has('city_id')) {
             $query->where('city_id', $request->input('city_id'));
@@ -41,7 +43,9 @@ class LocationController extends Controller
     {
         // Находим локацию с ее фотографиями и категориями
         // findOrFail автоматически вернет 404, если локация не найдена
-        $location = Location::with(['photos.user.photographerProfile', 'categories'])->findOrFail($id);
+        $location = Location::with(['photos.user.photographerProfile', 'categories'])
+            ->where('status', LocationStatus::Approved)
+            ->findOrFail($id);
 
         return $location;
     }
@@ -56,6 +60,7 @@ class LocationController extends Controller
         ]);
 
         $query = Location::with(['photos', 'categories'])
+            ->where('status', LocationStatus::Approved)
             ->whereBetween('latitude', [$request->sw_lat, $request->ne_lat])
             ->whereBetween('longitude', [$request->sw_lng, $request->ne_lng]);
 
@@ -123,7 +128,7 @@ class LocationController extends Controller
 
                 // Generate a unique name, forcing jpg extension
                 $filename = Str::random(40) . '.jpg';
-                $path = 'locations/' . filename;
+                $path = 'locations/' . $filename;
 
                 // Encode the image to JPEG format (quality 80) и сохраняем в публичное хранилище
                 $encodedImage = $image->toJpeg(80);
