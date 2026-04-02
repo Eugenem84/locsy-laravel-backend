@@ -76,6 +76,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasOne(PhotographerProfile::class);
     }
 
+    public function photos(): HasMany
+    {
+        return $this->hasMany(Photo::class);
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return true;
