@@ -10,13 +10,17 @@ class PhotographerController extends Controller
 {
     public function show($userId)
     {
-        $photographer = PhotographerProfile::with(['city', 'user.photos'])->where('user_id', $userId)->firstOrFail();
+        $photographer = PhotographerProfile::with(['city', 'user.photos.location'])->where('user_id', $userId)->firstOrFail();
 
         $photos = $photographer->user->photos->map(function ($photo) {
             return [
                 'id' => $photo->id,
                 'full_url' => $photo->full_url,
                 'user_id' => $photo->user_id,
+                'location' => $photo->location ? [
+                    'id' => $photo->location->id,
+                    'name' => $photo->location->name,
+                ] : null,
             ];
         });
 
