@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\LocationStatus;
 use App\Filament\Resources\LocationResource\Pages;
 use App\Filament\Resources\LocationResource\RelationManagers;
 use App\Forms\Components\MapPicker;
@@ -10,7 +11,9 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
 
 class LocationResource extends Resource
 {
@@ -75,12 +78,33 @@ class LocationResource extends Resource
                 Tables\Columns\TextColumn::make('categories.name')
                     ->badge()
                     ->color('primary'),
+                BadgeColumn::make('status')
+                    ->label('Статус')
+                    ->colors([
+                        'warning' => LocationStatus::Pending->value,
+                        'success' => LocationStatus::Approved->value,
+                        'danger' => LocationStatus::Rejected->value,
+                    ])
+                    ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Action::make('approve')
+                    ->label('Одобрить')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->action(fn (Location $record) => $record->update(['status' => LocationStatus::Approved]))
+                    ->visible(fn (Location $record) => $record->status === LocationStatus::Pending), // Показываем только для ожидающих
+
+                Action::make('reject')
+                    ->label('Отклонить')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->action(fn (Location $record) => $record->update(['status' => LocationStatus::Rejected]))
+                    ->visible(fn (Location $record) => $record->status === LocationStatus::Pending), // Показываем только для ожидающих
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

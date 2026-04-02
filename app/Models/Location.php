@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LocationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,11 @@ class Location extends Model
         'latitude',
         'longitude',
         'user_id',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => LocationStatus::class,
     ];
 
     public function city(): BelongsTo
