@@ -26,4 +26,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/locations/{location}/photos', [PhotoController::class, 'store']);
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy']);
     Route::put('/user/city', [AuthController::class, 'updateUserCity']);
+    Route::post('/user/avatar', [AuthController::class, 'updateAvatar']);
 });

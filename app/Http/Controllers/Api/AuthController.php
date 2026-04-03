@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -98,6 +99,35 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'User city updated successfully',
             'user' => $user
+        ]);
+    }
+
+    public function updateAvatar(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'avatar' => ['required', 'image', 'max:100000'], // 100MB Max
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        $user = Auth::user();
+
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar if it exists
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $path; // Save the relative path
+            $user->save();
+        }
+
+        return response()->json([
+            'message' => 'Avatar updated successfully',
+            'user' => $user->fresh() // Return the updated user object
         ]);
     }
 
