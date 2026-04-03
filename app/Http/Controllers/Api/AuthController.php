@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class AuthController extends Controller
 {
@@ -120,7 +122,23 @@ class AuthController extends Controller
                 Storage::disk('public')->delete($user->avatar);
             }
 
-            $path = $request->file('avatar')->store('avatars', 'public');
+            $avatar = $request->file('avatar');
+            $filename = time() . '.' . $avatar->getClientOriginalExtension();
+
+            // Create an image manager with the GD driver
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($avatar->getRealPath());
+
+            // Crop and resize
+            $width = $image->width();
+            $height = $image->height();
+            $size = min($width, $height);
+            $image->crop($size, $size)->resize(300, 300);
+
+            $path = 'avatars/' . $filename;
+            Storage::disk('public')->put($path, $image->encode());
+
+
             $user->avatar = $path; // Save the relative path
             $user->save();
         }
