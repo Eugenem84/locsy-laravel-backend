@@ -37,6 +37,9 @@ class LocationResource extends Resource
                 Forms\Components\Select::make('user_id')
                     ->relationship('user', 'name')
                     ->required(),
+                Forms\Components\Select::make('status')
+                    ->options(LocationStatus::class)
+                    ->required(),
 
                 // Поле для выбора категорий
                 Forms\Components\Select::make('categories')

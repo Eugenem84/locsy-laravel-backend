@@ -6,6 +6,7 @@ use App\Enums\LocationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\Photo;
+use App\Settings\ModerationSettings; // Добавляем импорт ModerationSettings
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -95,6 +96,11 @@ class LocationController extends Controller
             'photos.*' => 'image|mimes:jpeg,png,jpg,gif',
         ]);
 
+        $settings = app(ModerationSettings::class);
+        $needsModeration = $settings->location_moderation_enabled;
+
+        $status = $needsModeration ? LocationStatus::Pending : LocationStatus::Approved;
+
         $location = Location::create([
             'name' => $request->name,
             'description' => $request->description,
@@ -102,6 +108,7 @@ class LocationController extends Controller
             'longitude' => $request->longitude,
             'city_id' => $request->city_id,
             'user_id' => Auth::id(),
+            'status' => $status, // Устанавливаем статус в зависимости от настроек модерации
         ]);
 
         // Прикрепляем категории, если они были переданы
@@ -142,6 +149,10 @@ class LocationController extends Controller
             }
         }
 
-        return response()->json($location->load(['photos', 'categories']), 201);
+        // Возвращаем локацию и флаг needs_moderation
+        return response()->json([
+            'location' => $location->load(['photos', 'categories']),
+            'needs_moderation' => $needsModeration,
+        ], 201);
     }
 }
