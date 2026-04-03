@@ -27,8 +27,10 @@ class PhotographerController extends Controller
         $profileData = $photographer->toArray();
         // Unset the user relation to avoid exposing unnecessary user data
         unset($profileData['user']);
-        $profileData['photos'] = $photos;
 
+        // Add avatar from user model
+        $profileData['avatar'] = $photographer->user->avatar;
+        $profileData['photos'] = $photos;
 
         return response()->json($profileData);
     }
