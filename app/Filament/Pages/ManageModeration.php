@@ -20,7 +20,8 @@ class ManageModeration extends SettingsPage
             ->schema([
                 Toggle::make('location_moderation_enabled')
                     ->label('Включить модерацию локаций')
-                    ->helperText('Если включено, новые локации будут требовать одобрения администратора.'),
+                    ->helperText('Если включено, новые локации будут требовать одобрения администратора.')
+                    ->dehydrateStateUsing(fn ($state): bool => boolval($state)),
             ]);
     }
 }

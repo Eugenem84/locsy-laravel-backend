@@ -34,6 +34,7 @@ class User extends Authenticatable implements FilamentUser
         'city_id',
         'is_photographer',
         'avatar', // Added avatar to fillable
+        'is_admin',
     ];
 
     /**
@@ -96,6 +97,6 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->is_admin;
     }
 }

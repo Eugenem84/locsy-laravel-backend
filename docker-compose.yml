@@ -12,8 +12,8 @@ services:
     environment:
       - WEB_DOCUMENT_ROOT=/app/public
     # Подключаем остальные переменные из .env файла
-    env_file:
-      - .env
+#    env_file:
+#      - .env
 
   # Сервис базы данных (PostgreSQL)
   db:
