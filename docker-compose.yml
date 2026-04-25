@@ -20,8 +20,6 @@ services:
   app:
     image: 'webdevops/php-nginx:8.2'
     restart: unless-stopped
-    ports:
-      - "8080:80" # Изменен порт, чтобы не конфликтовать с фронтендом
     volumes:
       - .:/app
     working_dir: /app
@@ -29,8 +27,8 @@ services:
     environment:
       - WEB_DOCUMENT_ROOT=/app/public
     # Подключаем остальные переменные из .env файла
-#    env_file:
-#      - .env
+    env_file:
+      - .env
     networks:
       - locsy_net
 
@@ -56,8 +54,6 @@ services:
       context: ../locsy-spa-quasar # Путь к вашему Quasar-проекту
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "8000:80" # Фронтенд будет доступен на порту 8000
     depends_on:
       - app
     networks:
