@@ -2,13 +2,19 @@ services:
 
   nginx:
     image: nginx:alpine
+    restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
     depends_on:
       - frontend
       - app
+    networks:
+      - locsy_net
 
   # Сервис приложения (PHP-FPM + Nginx)
   app:
@@ -25,6 +31,8 @@ services:
     # Подключаем остальные переменные из .env файла
 #    env_file:
 #      - .env
+    networks:
+      - locsy_net
 
   # Сервис базы данных (PostgreSQL)
   db:
@@ -39,6 +47,8 @@ services:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - locsy_net
 
   # Сервис фронтенда (Quasar + Nginx)
   frontend:
@@ -50,8 +60,22 @@ services:
       - "8000:80" # Фронтенд будет доступен на порту 8000
     depends_on:
       - app
+    networks:
+      - locsy_net
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    networks:
+      - locsy_net
 
 # Docker Volume для сохранения данных БД
 volumes:
   locsy_postgres_data:
     driver: local
+
+networks:
+  locsy_net:
+    driver: bridge
