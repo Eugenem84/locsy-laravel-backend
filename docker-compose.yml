@@ -4,7 +4,7 @@ services:
     image: 'webdevops/php-nginx:8.2'
     restart: unless-stopped
     ports:
-      - "8000:80"
+      - "8080:80" # Изменен порт, чтобы не конфликтовать с фронтендом
     volumes:
       - .:/app
     working_dir: /app
@@ -28,6 +28,17 @@ services:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+  # Сервис фронтенда (Quasar + Nginx)
+  frontend:
+    build:
+      context: ../locsy-spa-quasar # Путь к вашему Quasar-проекту
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:80" # Фронтенд будет доступен на порту 8000
+    depends_on:
+      - app
 
 # Docker Volume для сохранения данных БД
 volumes:
