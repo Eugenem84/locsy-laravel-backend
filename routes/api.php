@@ -28,3 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/city', [AuthController::class, 'updateUserCity']);
     Route::post('/user/avatar', [AuthController::class, 'updateAvatar']);
 });
+
+
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout']);
