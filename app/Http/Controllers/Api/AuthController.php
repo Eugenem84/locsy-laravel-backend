@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+use Throwable; // Import Throwable
 
 class AuthController extends Controller
 {
@@ -49,25 +50,41 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => [__('auth.failed')],
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
             ]);
+
+            if (!Auth::attempt($request->only('email', 'password'))) {
+                throw ValidationException::withMessages([
+                    'email' => [__('auth.failed')],
+                ]);
+            }
+
+            $request->session()->regenerate();
+
+            $user = Auth::user();
+            if ($user->city) {
+                $request->session()->put('city', $user->city);
+            }
+
+            return response()->noContent();
+        } catch (ValidationException $e) {
+            // Re-throw validation exceptions to be handled by Laravel's exception handler
+            throw $e;
+        } catch (Throwable $e) {
+            // Catch any other unexpected errors
+            // Log the error for debugging purposes in production
+            // \Log::error("Login error: " . $e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'message' => 'An unexpected error occurred during login. Please try again later.',
+                // In development, you might want to include more details for debugging:
+                // 'error' => $e->getMessage(),
+                // 'trace' => $e->getTraceAsString(),
+            ], 500);
         }
-
-        $request->session()->regenerate();
-
-        $user = Auth::user();
-        if ($user->city) {
-            $request->session()->put('city', $user->city);
-        }
-
-        return response()->noContent();
     }
 
     /**
