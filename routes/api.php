@@ -19,7 +19,6 @@ Route::apiResource('categories', CategoryController::class)->only(['index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
-    Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('locations', [LocationController::class, 'store']);
     Route::post('/locations/{location}/favorite', [FavoriteController::class, 'add']);
     Route::delete('/locations/{location}/favorite', [FavoriteController::class, 'remove']);
@@ -31,5 +30,11 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('web')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+});
+
+Route::middleware(['web', 'auth:sanctum'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+});
