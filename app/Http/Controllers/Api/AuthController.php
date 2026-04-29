@@ -39,9 +39,14 @@ class AuthController extends Controller
             'city_id' => $request->city_id,
         ]);
 
+        $token = $user->createToken('api-token')->plainTextToken;
+
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user
+            'user' => $user,
+            'access_token' => $token,
+            'token' => $token,
+            'token_type' => 'Bearer',
         ], 201);
     }
 
@@ -51,10 +56,14 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         try {
-            $request->validate([
+            $validator = Validator::make($request->all(), [
                 'email' => 'required|email',
                 'password' => 'required',
             ]);
+
+            if ($validator->fails()) {
+                throw new ValidationException($validator);
+            }
 
             if (!Auth::attempt($request->only('email', 'password'))) {
                 throw ValidationException::withMessages([
@@ -65,24 +74,28 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             $user = Auth::user();
-            if ($user->city) {
-                $request->session()->put('city', $user->city);
-            }
+            $token = $user->createToken('api-token')->plainTextToken;
 
-            return response()->noContent();
+            return response()->json([
+                'message' => 'Logged in successfully',
+                'user' => $user,
+                'access_token' => $token,
+                'token' => $token,
+                'token_type' => 'Bearer',
+            ]);
         } catch (ValidationException $e) {
             // Re-throw validation exceptions to be handled by Laravel's exception handler
             throw $e;
         } catch (Throwable $e) {
             // Catch any other unexpected errors
             // Log the error for debugging purposes in production
-            // \Log::error("Login error: " . $e->getMessage(), ['exception' => $e]);
+             \Log::error("Login error: " . $e->getMessage(), ['exception' => $e]);
 
             return response()->json([
                 'message' => 'An unexpected error occurred during login. Please try again later.',
                 // In development, you might want to include more details for debugging:
-                // 'error' => $e->getMessage(),
-                // 'trace' => $e->getTraceAsString(),
+                 'error' => $e->getMessage(),
+                 'trace' => $e->getTraceAsString(),
             ], 500);
         }
     }
@@ -95,7 +108,6 @@ class AuthController extends Controller
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return response()->noContent();
