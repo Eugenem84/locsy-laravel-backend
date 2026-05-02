@@ -26,6 +26,9 @@ services:
     # Явно указываем Nginx, где находится публичная папка Laravel
     environment:
       - WEB_DOCUMENT_ROOT=/app/public
+      - PHP_UPLOAD_MAX_FILESIZE=100M
+      - PHP_POST_MAX_SIZE=100M
+      - NGINX_CLIENT_MAX_BODY_SIZE=100m
     # Подключаем остальные переменные из .env файла
     env_file:
       - .env
