@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
             CitiesTableSeeder::class,
             Admin1CodeTranslationSeeder::class,
             CategorySeeder::class,
+            MoscowParksSeeder::class,
+            YaroslavlPlacesSeeder::class,
         ]);
     }
 }
