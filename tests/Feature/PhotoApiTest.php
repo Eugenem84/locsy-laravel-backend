@@ -6,8 +6,6 @@ use App\Models\Location;
 use App\Models\Photo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PhotoApiTest extends TestCase
@@ -36,7 +34,7 @@ class PhotoApiTest extends TestCase
 
         // 2. Действие (Act)
         // Пытаемся удалить фотографию от имени ВТОРОГО пользователя
-        $response = $this->actingAs($userTwo)->deleteJson('/api/photos/' . $photo->id);
+        $response = $this->actingAs($userTwo)->deleteJson('/api/photos/'.$photo->id);
 
         // 3. Проверка (Assert)
         // Ожидаем статус 403 Forbidden (или 404 Not Found, если политика скрывает существование ресурса)

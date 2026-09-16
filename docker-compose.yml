@@ -29,9 +29,10 @@ services:
       - PHP_UPLOAD_MAX_FILESIZE=100M
       - PHP_POST_MAX_SIZE=100M
       - NGINX_CLIENT_MAX_BODY_SIZE=100m
-    # Подключаем остальные переменные из .env файла
-    env_file:
-      - .env
+    # ВАЖНО: не подключаем .env как env_file — Laravel сам читает .env из
+    # смонтированного кода. Иначе переменные (APP_ENV=local, DB_DATABASE=locsy)
+    # попадают в окружение контейнера, перебивают .env.testing/phpunit.xml
+    # и тесты могут уйти в рабочую базу.
     networks:
       - locsy_net
 

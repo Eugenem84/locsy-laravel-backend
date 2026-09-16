@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\PhotoStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Photo extends Model
@@ -20,9 +21,23 @@ class Photo extends Model
         'path',
         'is_main',
         'user_id',
+        'status',
+        'moderation_note',
+    ];
+
+    protected $casts = [
+        'status' => PhotoStatus::class,
     ];
 
     protected $appends = ['full_url'];
+
+    /**
+     * Только фотографии, прошедшие модерацию.
+     */
+    public function scopeApproved(Builder $query): Builder
+    {
+        return $query->where('status', PhotoStatus::Approved);
+    }
 
     public function location(): BelongsTo
     {
@@ -47,8 +62,9 @@ class Photo extends Model
                 if (Str::startsWith($path, ['http://', 'https://'])) {
                     return $path;
                 }
+
                 // Если нет, создаем абсолютный URL с помощью asset()
-                return asset('storage/' . $path);
+                return asset('storage/'.$path);
             }
         );
     }

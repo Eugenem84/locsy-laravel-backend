@@ -22,5 +22,18 @@ class SettingsSeeder extends Seeder
                 'locked' => false,
             ]
         );
+
+        DB::table('settings')->updateOrInsert(
+            [
+                'group' => 'moderation',
+                'name' => 'photo_moderation_enabled',
+            ],
+            [
+                // Модерация фотографий включена по умолчанию: в каталог попадает
+                // только проверенный модератором контент.
+                'payload' => json_encode(true),
+                'locked' => false,
+            ]
+        );
     }
 }

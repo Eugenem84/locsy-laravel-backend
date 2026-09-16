@@ -10,6 +10,7 @@ use Filament\Pages\SettingsPage;
 class ManageModeration extends SettingsPage
 {
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+
     protected static string $settings = ModerationSettings::class;
 
     protected static ?string $navigationGroup = 'Settings';
@@ -21,6 +22,11 @@ class ManageModeration extends SettingsPage
                 Toggle::make('location_moderation_enabled')
                     ->label('Включить модерацию локаций')
                     ->helperText('Если включено, новые локации будут требовать одобрения администратора.')
+                    ->dehydrateStateUsing(fn ($state): bool => boolval($state)),
+
+                Toggle::make('photo_moderation_enabled')
+                    ->label('Включить модерацию фотографий')
+                    ->helperText('Если включено, фотографии появляются в каталоге только после одобрения модератором (рекомендуется).')
                     ->dehydrateStateUsing(fn ($state): bool => boolval($state)),
             ]);
     }

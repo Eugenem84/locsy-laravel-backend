@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\LocationResource\RelationManagers;
 
+use App\Enums\PhotoStatus;
 use App\Models\Photo;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -31,9 +32,13 @@ class PhotosRelationManager extends RelationManager
                     ->disk('public')
                     ->directory('photos')
                     ->label('Photo'),
+                Forms\Components\Select::make('status')
+                    ->label('Статус модерации')
+                    ->options(PhotoStatus::class)
+                    ->default(PhotoStatus::Approved)
+                    ->required(),
                 Forms\Components\Toggle::make('is_main')
-                    ->required()
-                    ->label('Main Photo'),
+                    ->label('Обложка локации'),
             ]);
     }
 
@@ -41,14 +46,19 @@ class PhotosRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('path')
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\ImageColumn::make('full_url')
-                    ->label('Image'),
+                    ->label('Фото')
+                    ->height(70),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->label('Статус'),
                 Tables\Columns\IconColumn::make('is_main')
                     ->boolean()
-                    ->label('Is Main'),
+                    ->label('Обложка'),
                 Tables\Columns\TextColumn::make('user.name')
-                    ->label('Author'),
+                    ->label('Автор')
+                    ->placeholder('—'),
             ])
             ->filters([
                 //
@@ -57,6 +67,30 @@ class PhotosRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make(),
             ])
             ->actions([
+                Tables\Actions\Action::make('approve')
+                    ->label('Одобрить')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Photo $record) => $record->status !== PhotoStatus::Approved)
+                    ->action(fn (Photo $record) => $record->update([
+                        'status' => PhotoStatus::Approved,
+                        'moderation_note' => null,
+                    ])),
+                Tables\Actions\Action::make('reject')
+                    ->label('Отклонить')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->form([
+                        Forms\Components\Textarea::make('moderation_note')
+                            ->label('Причина отказа (увидит автор)')
+                            ->required()
+                            ->maxLength(500),
+                    ])
+                    ->visible(fn (Photo $record) => $record->status !== PhotoStatus::Rejected)
+                    ->action(fn (Photo $record, array $data) => $record->update([
+                        'status' => PhotoStatus::Rejected,
+                        'moderation_note' => $data['moderation_note'],
+                    ])),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

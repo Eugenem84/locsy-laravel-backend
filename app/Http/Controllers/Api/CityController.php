@@ -30,7 +30,6 @@ class CityController extends Controller
                 DB::raw('COALESCE(admin1_code_translations.name, admin1_codes.name) as region_name')
             );
 
-
         if ($request->has('search')) {
             $searchTerm = $request->input('search');
             $query->where(function ($q) use ($searchTerm) {
@@ -48,14 +47,14 @@ class CityController extends Controller
         $cities->transform(function ($city) {
             $cityName = $city->name; // Изначально - латинское имя
 
-            if (!empty($city->alternatenames)) {
+            if (! empty($city->alternatenames)) {
                 $alternateNames = explode(',', $city->alternatenames);
                 $russianNames = array_filter($alternateNames, function ($name) {
                     return preg_match('/^[а-яА-ЯёЁ\s\-]+$/u', $name);
                 });
 
                 $bestName = null;
-                if (!empty($russianNames)) {
+                if (! empty($russianNames)) {
                     $bestMatchScore = -1;
                     foreach ($russianNames as $name) {
                         $transliteratedName = Str::ascii($name);
@@ -73,8 +72,8 @@ class CityController extends Controller
 
             // Формируем новое имя, только если регион найден
             // Теперь region_name будет содержать русский перевод
-            if (!empty($city->region_name)) {
-                $city->name = $cityName . ' (' . $city->region_name . ')';
+            if (! empty($city->region_name)) {
+                $city->name = $cityName.' ('.$city->region_name.')';
             } else {
                 $city->name = $cityName;
             }

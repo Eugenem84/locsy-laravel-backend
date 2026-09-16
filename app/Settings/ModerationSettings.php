@@ -8,6 +8,8 @@ class ModerationSettings extends Settings
 {
     public bool $location_moderation_enabled = false;
 
+    public bool $photo_moderation_enabled = true;
+
     public static function group(): string
     {
         return 'moderation';

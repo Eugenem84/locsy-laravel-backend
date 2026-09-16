@@ -2,60 +2,42 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PhotoStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\Photo;
+use App\Services\PhotoStorage;
+use App\Settings\ModerationSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-//use Intervention\Image\Laravel\Facades\Image;
-use Illuminate\Support\Str;
-
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\ImageManager;
 
 class PhotoController extends Controller
 {
     public function store(Request $request, Location $location)
     {
         $request->validate([
-            'photos.*' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:100000',
+            'photos' => 'required|array|max:10',
+            'photos.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:20480',
         ]);
 
-        $photos = [];
-        if ($request->hasFile('photos')) {
-            // Create an image manager instance with GD driver
-            $manager = new ImageManager(new Driver());
+        $settings = app(ModerationSettings::class);
+        $needsModeration = $settings->photo_moderation_enabled;
+        $status = $needsModeration ? PhotoStatus::Pending : PhotoStatus::Approved;
 
-            foreach ($request->file('photos') as $photoFile) {
-                // Read image from uploaded file
-                $image = $manager->read($photoFile);
+        $photoStorage = app(PhotoStorage::class);
 
-                // Resize image if its width is greater than 3840px, maintaining aspect ratio
-                if ($image->width() > 3840) {
-                    $image->scale(width: 3840);
-                }
+        $photos = collect($request->file('photos'))->map(
+            fn ($file) => $photoStorage->store($file, $location->id, $request->user()->id, $status)
+        );
 
-                if($image->height() > 2048) {
-                    $image->scale(height: 2048);
-                }
-
-                // Generate a unique name, forcing jpg extension
-                $filename = Str::random(40) . '.jpg';
-                $path = 'locations/' . $filename;
-
-                // Encode the image to JPEG format (quality 80) and save to public storage
-                $encodedImage = $image->toJpeg(80);
-                Storage::disk('public')->put($path, (string) $encodedImage);
-
-                Photo::create([
-                    'location_id' => $location->id,
-                    'user_id' => auth()->id(),
-                    'path' => $path,
-                ]);
-            }
-        }
-
-        return response()->json($photos, 201);
+        return response()->json([
+            'photos' => $photos->map(fn (Photo $photo) => [
+                'id' => $photo->id,
+                'full_url' => $photo->full_url,
+                'status' => $photo->status,
+            ]),
+            'needs_moderation' => $needsModeration,
+        ], 201);
     }
 
     public function destroy(Photo $photo)

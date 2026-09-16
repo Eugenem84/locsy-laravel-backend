@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\PhotographerController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/locations/by-bounds', [LocationController::class, 'getLocationsByBounds']);
@@ -19,6 +18,9 @@ Route::apiResource('categories', CategoryController::class)->only(['index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/user/locations', [AuthController::class, 'myLocations']);
+    Route::get('/user/photos', [AuthController::class, 'myPhotos']);
+    Route::put('/user/photographer-profile', [AuthController::class, 'updatePhotographerProfile']);
     Route::post('locations', [LocationController::class, 'store']);
     Route::post('/locations/{location}/favorite', [FavoriteController::class, 'add']);
     Route::delete('/locations/{location}/favorite', [FavoriteController::class, 'remove']);
@@ -29,10 +31,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/avatar', [AuthController::class, 'updateAvatar']);
 });
 
-
 Route::middleware('web')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    // Жёсткий лимит на попытки входа (защита от перебора паролей)
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 });
 
 Route::middleware(['web', 'auth:sanctum'])->group(function () {

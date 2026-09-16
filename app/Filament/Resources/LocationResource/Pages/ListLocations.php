@@ -6,8 +6,8 @@ use App\Enums\LocationStatus;
 use App\Filament\Resources\LocationResource;
 use App\Models\Location;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListLocations extends ListRecords

@@ -21,7 +21,7 @@ class Admin1Code extends Model
     public function cities()
     {
         return $this->hasMany(City::class, 'admin1_code', 'admin1_code')
-                    ->where('country_code', $this->country_code);
+            ->where('country_code', $this->country_code);
     }
 
     /**

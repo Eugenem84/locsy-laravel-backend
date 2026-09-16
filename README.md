@@ -1,98 +1,147 @@
-# Locsy - Backend
+# Locsy — backend (Laravel API)
 
-> REST API для сервиса по поиску фотолокаций Locsy.
+> REST API сервиса фотолокаций: города, локации, фотографии, избранное,
+> профили фотографов и модерация пользовательского контента.
 
-## Стек технологий
+## Стек
 
-- **Framework:** Laravel
-- **База данных:** PostgreSQL
-- **Окружение для разработки:** Docker
+- **Framework:** Laravel 12 (PHP 8.2)
+- **Аутентификация:** Laravel Sanctum (stateful cookie + Bearer-токены)
+- **База данных:** PostgreSQL (справочник городов — GeoNames)
+- **Админка:** Filament 3 (локации, фотографии, категории, настройки модерации)
+- **Изображения:** Intervention Image (нормализация размера, JPEG)
+- **Инфраструктура:** Docker Compose (nginx + PHP-FPM + Postgres), Let's Encrypt
 
----
-
-## Как запустить для разработки
-
-Этот проект использует Docker для создания консистентного и изолированного окружения. Вам не нужно устанавливать PHP или PostgreSQL на ваш компьютер, только Docker.
-
-**1. Клонируйте репозиторий**
-
-```sh
-git clone <адрес-вашего-репозитория>
-cd locsy-laravel-backend
-```
-
-**2. Создайте файл окружения (`.env`)**
-
-Скопируйте файл с примером настроек.
+## Запуск для разработки
 
 ```sh
 cp .env.example .env
+docker compose up -d --build          # nginx (80/443), app, db, frontend
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+docker compose exec app php artisan storage:link   # обязательно: фото/аватары
 ```
 
-**3. Настройте подключение к базе данных**
+- API: `http://localhost/api/...`
+- Админка: `http://localhost/admin` (пользователю нужен `is_admin = true`)
+- Фронтенд (SPA) собирается из соседней папки `../locsy-spa-quasar` сервисом
+  `frontend`, внешний nginx проксирует: `/api/`, `/sanctum/`, `/storage/`,
+  `/admin`, `/livewire`, `/filament` → Laravel, остальное → SPA.
 
-Откройте только что созданный файл `.env` и убедитесь, что секция с настройками базы данных выглядит так:
+В `.env` для локальной разработки должно быть:
 
 ```env
+APP_URL=http://localhost            # в продакшене — реальный домен с https!
+FRONTEND_URL=http://localhost:9000  # origin SPA (CORS)
+SANCTUM_STATEFUL_DOMAINS=localhost:9000
 DB_CONNECTION=pgsql
 DB_HOST=db
-DB_PORT=5432
 DB_DATABASE=locsy
 DB_USERNAME=sail
 DB_PASSWORD=password
 ```
 
-**4. Запустите Docker-контейнеры**
+> `APP_URL` влияет на абсолютные ссылки фотографий (`asset('storage/...')`).
 
-Эта команда соберет и запустит контейнеры с приложением и базой данных в фоновом режиме.
+## API
+
+### Публичные
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/api/cities?search=` | Города РФ (население > 100 тыс.), поиск по названию/региону |
+| GET | `/api/categories` | Категории локаций |
+| GET | `/api/locations?city_id=&category_ids[]=` | Локации города (только одобренные) |
+| GET | `/api/locations/by-bounds?sw_lat&sw_lng&ne_lat&ne_lng` | Локации в видимой области карты |
+| GET | `/api/location/{id}` | Карточка локации с одобренными фото |
+| GET | `/api/photographers/{userId}` | Профиль фотографа: портфолио + точки съёмок |
+
+Во всех ответах отдаются **только фотографии со статусом `approved`**.
+
+### Требуют авторизации (`auth:sanctum`)
+
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/api/user` | Текущий пользователь + профиль фотографа |
+| GET | `/api/user/locations` | Мои локации со статусом модерации и счётчиками фото |
+| GET | `/api/user/photos` | Мои фото: статус, причина отказа, локация |
+| PUT | `/api/user/photographer-profile` | Создать/обновить профиль фотографа |
+| POST | `/api/locations` | Создать локацию (+ фото, `photos[]`) |
+| POST | `/api/locations/{id}/photos` | Добавить фото к локации |
+| DELETE | `/api/photos/{id}` | Удалить своё фото |
+| GET | `/api/favorites` | Избранные локации |
+| POST/DELETE | `/api/locations/{id}/favorite` | Добавить/убрать из избранного |
+| PUT | `/api/user/city` | Сменить город |
+| POST | `/api/user/avatar` | Загрузить аватар |
+
+### Регистрация и вход
+
+| Метод | Путь | Описание |
+|---|---|---|
+| POST | `/api/register` | Регистрация: `role=user` или `role=photographer` (+ поля профиля) |
+| POST | `/api/login` | Вход (лимит 5 попыток в минуту на email+IP) |
+| POST | `/api/logout` | Выход: отзыв токена + инвалидация сессии |
+
+## Модерация
+
+- **Локации:** статусы `pending / approved / rejected`. Автор-пользователь видит
+  статус в профиле; модерация включается настройкой `location_moderation_enabled`.
+- **Фотографии:** статусы `pending / approved / rejected`, причина отказа
+  (`moderation_note`) видна автору. Модерация фото включена по умолчанию
+  (`photo_moderation_enabled = true`): в публичные галереи попадают только
+  одобренные снимки.
+- Админка: `/admin` → группа «Модерация»:
+  - «Фотографии» — вкладки по статусам, счётчик очереди, массовое одобрение,
+    просмотр причины отказа;
+  - «Локации» — вкладка «На модерации», действия «Одобрить»/«Отклонить»;
+  - «Настройки» — переключатели модерации локаций и фотографий.
+
+## Команды
 
 ```sh
-docker compose up -d --build
+composer test                       # php artisan test (сначала чистит кеш конфига)
+vendor/bin/pint --test app tests    # стиль кода
+php artisan migrate --seed          # миграции + сиды (города, категории, настройки)
 ```
 
-**5. Установите PHP-зависимости**
+Тесты работают только с базой `locsy_testing`: она зафиксирована в
+`tests/TestCase.php` (константа `TESTING_DATABASE`) и дополнительно проверяется в
+`setUp()` — если подключение ушло в другую базу, прогон останавливается с ошибкой,
+чтобы `RefreshDatabase` не очистил рабочие данные.
 
-Выполните установку зависимостей с помощью Composer внутри Docker-контейнера.
+> Не добавляйте `env_file: .env` обратно в сервис `app` (docker-compose.yml):
+> переменные окружения контейнера перебивают `.env.testing` и `phpunit.xml`,
+> из-за чего тесты уходят в dev-базу. Laravel читает `.env` сам из кода.
+
+Тестовые файлы:
+
+- `tests/Feature/PhotoModerationTest.php` — модерация фото, роль фотографа при
+  регистрации, границы карты;
+- `tests/Feature/CityApiTest.php` — города, только одобренные локации, редирект `/`;
+- `tests/Feature/LocationApiTest.php`, `tests/Feature/PhotoApiTest.php` — доступы.
+
+## Изображения и хранилище
+
+Фото и аватары лежат на диске `public` (`storage/app/public`), поэтому обязателен
+симлинк `public/storage`:
 
 ```sh
-docker compose exec app composer install
+docker compose exec app php artisan storage:link
 ```
 
-**6. Сгенерируйте ключ приложения**
+В продакшене внешний nginx проксирует `/storage/` в Laravel (`nginx.conf`),
+иначе картинки будут отдаваться SPA и превратятся в 404.
 
-```sh
-docker compose exec app php artisan key:generate
+## Структура
+
 ```
-
-**7. Выполните миграции базы данных**
-
-Эта команда создаст все необходимые таблицы в базе данных.
-
-```sh
-docker compose exec app php artisan migrate
+app/
+  Enums/         LocationStatus, PhotoStatus
+  Services/      PhotoStorage (обработка и сохранение фото)
+  Http/Controllers/Api/   Auth, City, Category, Location, Photo, Favorite, Photographer
+  Models/        User, City, Location, Photo, PhotographerProfile, Category
+  Filament/      Resources (Location, Category, Photo), Pages (ManageModeration)
+  Settings/      ModerationSettings
+routes/api.php   публичные и защищённые маршруты API
 ```
-
----
-
-**Готово!**
-
-Ваше приложение будет доступно по адресу: [http://localhost:8000](http://localhost:8000)
-
-## Полезные команды Docker
-
-- **Остановить контейнеры:**
-  ```sh
-  docker compose down
-  ```
-- **Запустить остановленные контейнеры:**
-  ```sh
-  docker compose start
-  ```
-- **Зайти в командную строку контейнера приложения:**
-  ```sh
-  docker compose exec app bash
-  ```
-- **Посмотреть логи контейнера приложения:**
-  ```sh
-  docker compose logs -f app
-  ```

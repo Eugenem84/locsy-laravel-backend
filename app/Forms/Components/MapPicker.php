@@ -9,6 +9,7 @@ class MapPicker extends Field
     protected string $view = 'filament.forms.components.map-picker';
 
     protected string $latitudeStatePath;
+
     protected string $longitudeStatePath;
 
     public static function make(string $name): static
