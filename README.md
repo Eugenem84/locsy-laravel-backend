@@ -135,9 +135,13 @@ docker compose exec app php artisan db:seed --class=MoscowParksSeeder
 docker compose exec app php artisan db:seed --class=YaroslavlPlacesSeeder
 
 # на сервере обкатки (см. DEPLOY.md): сервис называется locsy-app, artisan — от пользователя application
-docker compose exec -T -u application locsy-app php artisan db:seed --class=MoscowParksSeeder
-docker compose exec -T -u application locsy-app php artisan db:seed --class=YaroslavlPlacesSeeder
+docker compose exec -T -u application locsy-app php artisan db:seed --class=MoscowParksSeeder --force
+docker compose exec -T -u application locsy-app php artisan db:seed --class=YaroslavlPlacesSeeder --force
 ```
+
+На сервере обязателен флаг `--force`: при `APP_ENV=production` Laravel спрашивает
+подтверждение, а в неинтерактивном режиме (`-T`) без флага команда отменяется
+(«Command cancelled»).
 
 Для сидов не нужны ни миграции, ни пересборка образа: они работают с уже
 существующими таблицами. Если города нет в `cities`, сидер пишет ошибку и
