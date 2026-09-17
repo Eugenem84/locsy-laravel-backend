@@ -71,6 +71,19 @@ services:
     networks:
       - locsy_net
 
+  # Локальный «почтовый ящик» для разработки: письма (сброс пароля) видно
+  # в веб-интерфейсе http://localhost:8025, наружу ничего не уходит.
+  # В .env: MAIL_MAILER=smtp, MAIL_HOST=mailpit, MAIL_PORT=1025.
+  # На обкатке/проде сервис не нужен — там настоящий SMTP beget.
+  mailpit:
+    image: axllent/mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - locsy_net
+
 # Docker Volume для сохранения данных БД
 volumes:
   locsy_postgres_data:

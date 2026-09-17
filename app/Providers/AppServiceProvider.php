@@ -29,5 +29,10 @@ class AppServiceProvider extends ServiceProvider
         // Отдельный жёсткий лимит на попытки входа: 5 запросов в минуту на email+IP
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)
             ->by($request->input('email').'|'.$request->ip()));
+
+        // Восстановление пароля: 5 запросов в минуту на email+IP — форма не должна
+        // становиться инструментом спама письмами по чужому адресу
+        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)
+            ->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()));
     }
 }

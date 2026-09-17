@@ -130,7 +130,86 @@ ssh dev-vps 'curl -sS -o /dev/null -w "%{http_code}\n" https://locsy.dev.medovf2
 по cookie **и** по Bearer-токену, `/api/user/photos`, публичный `/api/cities`, набор PHP-расширений
 (`gd`, `imagick`, `pdo_pgsql`, `zip`), ключевые значения `APP_*` в `.env` (секреты маскируются) и статус контейнеров.
 
-## 8. Известные грабли
+## 8. Почта и восстановление пароля
+
+Отправка идёт **только через SMTP**: в образе `webdevops/php-nginx` нет `sendmail`,
+поэтому `MAIL_MAILER=sendmail` не вариант, а API-транспорты (`resend`, `mailgun`,
+`ses`, `postmark`) требуют дополнительных composer-пакетов. «Из коробки» работает `smtp`.
+
+### Каналы по контурам
+
+| Контур | Настройка | Где смотреть письма |
+|---|---|---|
+| local (Mac) | `MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025` (`docker compose up -d mailpit`) | http://localhost:8025 |
+| local, быстрый вариант | `MAIL_MAILER=log` | `storage/logs/laravel.log` |
+| обкатка / dev / прод | `smtp.beget.com`, `MAIL_PORT=465`, `MAIL_SCHEME=smtps`, `MAIL_USERNAME=no-reply@<домен>` | ящик `dev@<домен>` в `web.beget.email` |
+
+### Переменные `.env` контура
+
+```env
+APP_URL=https://<домен контура>
+FRONTEND_URL=https://<домен контура>   # из него строятся ссылки в письмах (SPA, hash-роутер)
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtps
+MAIL_HOST=smtp.beget.com
+MAIL_PORT=465
+MAIL_USERNAME=no-reply@<домен>
+MAIL_PASSWORD=<пароль ящика>          # только в .env (600), не в git и не в отчётах
+MAIL_FROM_ADDRESS=no-reply@<домен>
+MAIL_FROM_NAME=Locsy
+MAIL_REPLY_TO_ADDRESS=dev@<домен>     # ответы пользователей уводим на живой ящик
+```
+
+После правки `.env` — `optimize:clear` и заново `config:cache` (§6), иначе контейнер
+продолжит работать со старым конфигом.
+
+### DNS домена, с которого уходят письма
+
+- **MX** — `mx1.beget.com`, `mx2.beget.com` (шаблон beget; по ним приходит входящая почта домена).
+- **SPF** — TXT на корне: `v=spf1 redirect=beget.com` (у beget-домена есть по умолчанию).
+- **DKIM** — включается в панели beget («Почта» → домен → цифровая подпись), после чего в
+  «DNS-записях» появляется TXT `mail._domainkey`. Без DKIM письма тоже уходят, но выше
+  шанс попасть в спам.
+- **DMARC** — TXT `_dmarc`: `v=DMARC1; p=none; rua=mailto:dev@<домен>` (добавляется вручную;
+  `p=none` — только отчёты, ничего не отклоняем).
+- **«Почта домена» (catch-all)** — обязательно указать живой ящик, иначе письма на
+  несуществующие адреса домена (включая `postmaster@` и `abuse@`) просто теряются.
+- Статус домена в реестре `.ru`: `whois -h whois.tcinet.ru <домен>`. Значение
+  `REGISTERED, DELEGATED, UNVERIFIED` означает, что нужно **подтвердить данные
+  администратора** у регистратора — иначе домен снимут с делегирования.
+- Пока зона не разошлась, `dig` может отдавать пустые ответы: у `.ru` negative-TTL 3600 с,
+  поэтому после регистрации домена записи видны не сразу (до ~часа).
+
+### Как проверить
+
+```bash
+# локально: письмо в Mailpit
+docker compose up -d mailpit && open http://localhost:8025
+
+# на контуре: запрос письма (ответ всегда один и тот же — существование адреса не утекает)
+curl -sS -X POST https://locsy.dev.medovf2h.beget.tech/api/forgot-password \
+  -H 'Content-Type: application/json' -d '{"email":"твой@ящик"}' | head -c 200
+
+# доставку и подписи смотрим в оригинале письма (Gmail/Яндекс → «показать оригинал»):
+# ожидаем Authentication-Results: spf=pass; dkim=pass; dmarc=pass
+```
+
+### Поведение и страховка
+
+- `POST /api/forgot-password` — `{ email }`; ответ всегда `200` с одинаковым текстом,
+  лимит 5 запросов в минуту на email+IP, повторное письмо Laravel не отправит раньше 60 секунд.
+- `POST /api/reset-password` — `{ token, email, password, password_confirmation }`,
+  пароль от 8 символов; после успешной смены **отзываются все токены Sanctum** и
+  удаляются сессии пользователя (`PasswordResetController`).
+- Ссылка в письме: `<FRONTEND_URL>/#/reset-password?token=…&email=…` (роутер SPA в
+  hash-режиме, поэтому путь идёт после «#»; плюс токен не попадает в логи nginx).
+  Токен живёт 60 минут (`config/auth.php` → `passwords.users.expire`).
+- Если письмо не доходит (почта не настроена, адрес недоступен) — пароль можно сменить
+  админски: `docker compose exec -T -u application locsy-app php artisan locsy:user-password user@example.com`
+  (пароль сгенерируется и покажется в выводе; `--password=...` — если нужен свой).
+  Команда заодно отзывает токены и сессии пользователя.
+
+## 9. Известные грабли
 
 - **Artisan запускаем от пользователя `application`** (`docker compose exec -u application locsy-app …`):
   `bootstrap/cache` и `storage` в контейнере принадлежат `application:application` (uid/gid 1000);
@@ -160,7 +239,7 @@ ssh dev-vps 'curl -sS -o /dev/null -w "%{http_code}\n" https://locsy.dev.medovf2
   (другой порог населения, другая страна) список надо пополнять; правильное решение — импортировать
   предпочтительное ru-имя из GeoNames `alternateNames` (isolanguage = 'ru') в отдельную колонку.
 
-## 9. Что нужно, чтобы выложить Locsy на dev (`dev.medovf2h.beget.tech`)
+## 10. Что нужно, чтобы выложить Locsy на dev (`dev.medovf2h.beget.tech`)
 
 - [ ] решить, что переносим: контейнеры целиком, только код или код + дамп БД;
 - [ ] A-запись уже есть (`dev.*` → 217.114.0.27), но уточнить, не занят ли этот хост другим проектом;
@@ -174,7 +253,7 @@ ssh dev-vps 'curl -sS -o /dev/null -w "%{http_code}\n" https://locsy.dev.medovf2
 - [ ] **важно:** `dev-vps` сейчас используется как независимый наблюдатель для внешних проверок.
       Если Locsy переедет на него, проверки «снаружи» нужно будет делать с другого хоста.
 
-## 10. Ограничения (нельзя)
+## 11. Ограничения (нельзя)
 
 - публиковать порты проектов на хост (включая PostgreSQL); `privileged`; `network_mode: host` без обоснования;
 - трогать чужие проекты: `ledger_craft_*` (Traefik на `0.0.0.0:443`/`8080`, Postgres на `0.0.0.0:5433`,

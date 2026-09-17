@@ -28,6 +28,10 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        // Email хранится в нижнем регистре, поэтому и проверку уникальности,
+        // и создание пользователя делаем по нормализованному значению
+        $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
+
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
@@ -94,6 +98,8 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         try {
+            $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
+
             $validator = Validator::make($request->all(), [
                 'email' => 'required|email',
                 'password' => 'required',

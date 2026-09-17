@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -68,6 +69,33 @@ class User extends Authenticatable implements FilamentUser
         return Attribute::make(
             get: fn (?string $value) => $value ? Storage::disk('public')->url($value) : null,
         );
+    }
+
+    /**
+     * Приводим email к нижнему регистру и убираем пробелы.
+     *
+     * В PostgreSQL unique-индекс регистрозависимый, поэтому «Ivan@mail.ru» и
+     * «ivan@mail.ru» иначе превращаются в два разных аккаунта, а вход по другому
+     * регистру «не находит» пользователя. Индекс по lower(email) — в миграции.
+     */
+    public static function normalizeEmail(?string $email): string
+    {
+        return mb_strtolower(trim((string) $email), 'UTF-8');
+    }
+
+    protected function email(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => self::normalizeEmail($value),
+        );
+    }
+
+    /**
+     * Письмо со ссылкой на сброс пароля (в SPA, поэтому ссылка через «#»).
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 
     public function favorites(): BelongsToMany
