@@ -70,6 +70,11 @@ DB_PASSWORD=password
 
 Во всех ответах отдаются **только фотографии со статусом `approved`**.
 
+Названия городов отдаются в виде «Город (Регион)»: русское имя выбирается из `alternatenames`,
+известные расхождения GeoNames правятся в `CityController` (`CITY_NAME_OVERRIDES`,
+`CITY_REGION_OVERRIDES`), регион не дублирует название города. Подробности — §8 в
+[`docs/ENVIRONMENTS.md`](./docs/ENVIRONMENTS.md).
+
 ### Требуют авторизации (`auth:sanctum`)
 
 | Метод | Путь | Описание |
