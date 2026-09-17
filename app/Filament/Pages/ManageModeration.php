@@ -13,7 +13,13 @@ class ManageModeration extends SettingsPage
 
     protected static string $settings = ModerationSettings::class;
 
-    protected static ?string $navigationGroup = 'Settings';
+    protected static ?string $navigationGroup = 'Настройки';
+
+    protected static ?string $navigationLabel = 'Правила модерации';
+
+    protected static ?string $title = 'Настройки модерации';
+
+    protected static ?int $navigationSort = 1;
 
     public function form(Form $form): Form
     {

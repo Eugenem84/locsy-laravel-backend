@@ -2,10 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\SetAdminLocale;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -27,8 +29,18 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('Locsy')
             ->colors([
                 'primary' => Color::Amber,
+            ])
+            // Порядок групп в боковом меню админки (метки должны совпадать
+            // с $navigationGroup у ресурсов и страниц). Иконки ставить нельзя:
+            // Filament запрещает иконку группы вместе с иконками её пунктов.
+            ->navigationGroups([
+                NavigationGroup::make('Модерация'),
+                NavigationGroup::make('Администрирование'),
+                NavigationGroup::make('Каталог'),
+                NavigationGroup::make('Настройки'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -50,6 +62,8 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                // Русский интерфейс админки (локаль API не меняется).
+                SetAdminLocale::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

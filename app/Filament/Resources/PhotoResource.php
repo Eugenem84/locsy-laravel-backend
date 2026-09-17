@@ -50,6 +50,11 @@ class PhotoResource extends Resource
         return 'warning';
     }
 
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Фотографии на модерации';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -68,6 +73,8 @@ class PhotoResource extends Resource
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            // Новая фотография может прийти, пока модератор держит список открытым.
+            ->poll('30s')
             ->columns([
                 ImageColumn::make('full_url')
                     ->label('Фото')

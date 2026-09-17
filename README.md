@@ -35,10 +35,27 @@ docker compose exec app php artisan storage:link   # обязательно: ф�
 ```
 
 - API: `http://localhost/api/...`
-- Админка: `http://localhost/admin` (пользователю нужен `is_admin = true`)
+- Админка: `http://localhost/admin` — вход только для пользователей с `is_admin = true`.
+  Локально `nginx.dev.conf` (подменяет прод-конфиг через `docker-compose.override.yml`)
+  проксирует в Laravel пути `/admin`, `/livewire`, `/filament`, `/up` и статику
+  `/js|/css/filament`; всё остальное уходит в SPA. Поэтому админка открывается
+  на порту 80 (`http://localhost/admin`), а SPA — на `http://localhost:9000`.
 - Фронтенд (SPA) собирается из соседней папки `../locsy-spa-quasar` сервисом
   `frontend`, внешний nginx проксирует: `/api/`, `/sanctum/`, `/storage/`,
   `/admin`, `/livewire`, `/filament` → Laravel, остальное → SPA.
+
+Первый администратор назначается вручную (в интерфейсе ещё некому нажать кнопку):
+
+```sh
+docker compose exec app php artisan tinker \
+  --execute="\App\Models\User::where('email','you@example.com')->update(['is_admin' => true]);"
+# либо SQL:
+docker exec locsy-laravel-backend-db-1 psql -U sail -d locsy \
+  -c "update users set is_admin = true where email = 'you@example.com';"
+```
+
+Дальше права раздаются в админке: «Администрирование» → «Пользователи» → тумблер
+«Админ». Пароль, если письмо для сброса не доходит: `php artisan locsy:user-password <email>`.
 
 В `.env` для локальной разработки должно быть:
 
@@ -67,13 +84,43 @@ DB_PASSWORD=password
 | GET | `/api/locations/by-bounds?sw_lat&sw_lng&ne_lat&ne_lng` | Локации в видимой области карты |
 | GET | `/api/location/{id}` | Карточка локации с одобренными фото |
 | GET | `/api/photographers/{userId}` | Профиль фотографа: портфолио + точки съёмок |
+| POST | `/api/forgot-password` | Письмо со ссылкой для сброса пароля (лимит 5 запросов/мин на email+IP) |
+| POST | `/api/reset-password` | Новый пароль по токену из письма |
 
 Во всех ответах отдаются **только фотографии со статусом `approved`**.
 
 Названия городов отдаются в виде «Город (Регион)»: русское имя выбирается из `alternatenames`,
 известные расхождения GeoNames правятся в `CityController` (`CITY_NAME_OVERRIDES`,
-`CITY_REGION_OVERRIDES`), регион не дублирует название города. Подробности — §8 в
+`CITY_REGION_OVERRIDES`), регион не дублирует название города. Подробности — §9 в
 [`docs/ENVIRONMENTS.md`](./docs/ENVIRONMENTS.md).
+
+### Почта
+
+Письма уходят только через SMTP — в образе нет `sendmail`, а API-транспорты (`resend`,
+`mailgun`, `ses`, `postmark`) потребовали бы дополнительных пакетов. Локально удобно
+смотреть письма в **Mailpit**: `docker compose up -d mailpit` → http://localhost:8025
+(в `.env`: `MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025`), либо
+`MAIL_MAILER=log` — тогда письмо пишется в `storage/logs/laravel.log`.
+
+Локальный `.env` и `.env.example` по умолчанию настроены на Mailpit:
+`MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025`,
+`MAIL_FROM_ADDRESS=no-reply@locsy.local`, `MAIL_FROM_NAME=Locsy`.
+В `MAIL_REPLY_TO_ADDRESS` можно указать свой живой ящик — адрес попадёт в
+заголовок `Reply-To`. Проверить отправку можно и без браузера:
+
+```sh
+docker compose exec app php artisan tinker \
+  --execute="\App\Models\User::where('email','test@mail.ru')->first()
+    ->notify(new \App\Notifications\ResetPasswordNotification('test-token'));"
+curl -s http://localhost:8025/api/v1/messages | head -c 200   # письмо в Mailpit
+```
+
+На обкатке/проде: `smtp.beget.com`, порт `465`, `MAIL_SCHEME=smtps`, логин — полный
+адрес ящика (`no-reply@<домен>`), ответы уводятся на живой ящик через
+`MAIL_REPLY_TO_ADDRESS`. Ссылки в письмах строятся от `FRONTEND_URL` контура.
+Ответ `POST /api/forgot-password` всегда одинаковый — по нему нельзя узнать,
+зарегистрирован адрес или нет. Настройка DNS (SPF/DKIM/DMARC), проверка доставки
+и админский сброс пароля — §8 в [`docs/ENVIRONMENTS.md`](./docs/ENVIRONMENTS.md).
 
 ### Требуют авторизации (`auth:sanctum`)
 
@@ -107,11 +154,26 @@ DB_PASSWORD=password
   (`moderation_note`) видна автору. Модерация фото включена по умолчанию
   (`photo_moderation_enabled = true`): в публичные галереи попадают только
   одобренные снимки.
-- Админка: `/admin` → группа «Модерация»:
-  - «Фотографии» — вкладки по статусам, счётчик очереди, массовое одобрение,
-    просмотр причины отказа;
-  - «Локации» — вкладка «На модерации», действия «Одобрить»/«Отклонить»;
-  - «Настройки» — переключатели модерации локаций и фотографий.
+- Админка: `/admin` (Filament), интерфейс на русском
+  (`App\Http\Middleware\SetAdminLocale`; локаль API при этом не меняется), бренд «Locsy».
+  Разделы:
+  - **Дашборд** — виджет «очередь модерации»: фото и локации на модерации,
+    опубликованные фото, пользователи и фотографы (`ModerationStatsWidget`);
+  - **Модерация → Фотографии** — фильтр по статусу, счётчик очереди в боковом меню,
+    «Одобрить» (с подтверждением, очищает причину отказа) и «Отклонить»
+    (обязательная причина), массовое одобрение, автообновление списка раз в 30 с;
+  - **Модерация → Локации** — по умолчанию открыт фильтр «На модерации»,
+    фильтр по городу, «Одобрить»/«Отклонить», массовое одобрение, количество фото
+    у локации и relation manager «Фотографии»;
+  - **Администрирование → Пользователи** — роли (фотограф / ищу места),
+    тумблер «Админ» (доступ в админку), город, ручная смена пароля;
+  - **Каталог → Категории** — справочник категорий локаций;
+  - **Настройки → Правила модерации** — переключатели модерации локаций и
+    фотографий (`App\Settings\ModerationSettings`).
+
+Доступ в панель — `User::canAccessPanel()` по флагу `is_admin`: гость уходит на
+`/admin/login`, авторизованный не-админ получает 403. Поведение зафиксировано в
+`tests/Feature/AdminPanelTest.php`.
 
 ## Команды
 
