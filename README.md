@@ -102,9 +102,24 @@ DB_PASSWORD=password
 (в `.env`: `MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025`), либо
 `MAIL_MAILER=log` — тогда письмо пишется в `storage/logs/laravel.log`.
 
+Приложение шлёт четыре письма:
+
+- **подтверждение почты** — сразу после регистрации (`VerifyEmailNotification`):
+  подписанная ссылка на `GET /email/verify/{id}/{hash}` (живёт 60 минут);
+- **приветствие** — после успешного подтверждения (`WelcomeNotification`):
+  фотографу со ссылкой на его профиль, обычному пользователю — на каталог локаций;
+- **сброс пароля** — по запросу `POST /api/forgot-password` (`ResetPasswordNotification`);
+- **пароль изменён** — после успешной смены пароля (`PasswordChangedNotification`).
+
+Подтверждение адреса обязательное: до перехода по ссылке функции аккаунта закрыты
+(middleware `verified`, ответ — `403` с `email_verified: false`), гостю и
+неподтверждённому пользователю доступны карта и локации. Отправка писем обёрнута
+в `try/catch` — если почта недоступна, регистрация/подтверждение/сброс всё равно
+проходят, а ошибка пишется в лог.
+
 Локальный `.env` и `.env.example` по умолчанию настроены на Mailpit:
 `MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025`,
-`MAIL_FROM_ADDRESS=no-reply@locsy.local`, `MAIL_FROM_NAME=Locsy`.
+`MAIL_FROM_ADDRESS=no-reply@locsy.local`, `MAIL_FROM_NAME=getlocsy`.
 В `MAIL_REPLY_TO_ADDRESS` можно указать свой живой ящик — адрес попадёт в
 заголовок `Reply-To`. Проверить отправку можно и без браузера:
 
@@ -137,14 +152,19 @@ curl -s http://localhost:8025/api/v1/messages | head -c 200   # письмо в 
 | POST/DELETE | `/api/locations/{id}/favorite` | Добавить/убрать из избранного |
 | PUT | `/api/user/city` | Сменить город |
 | POST | `/api/user/avatar` | Загрузить аватар |
+| POST | `/api/email/verification-notification` | Повторная отправка письма подтверждения (доступно и без подтверждения) |
+
+Все пути выше, кроме `GET /api/user` и повторной отправки письма, требуют
+подтверждённой почты (middleware `verified`); иначе — `403` с `email_verified: false`.
 
 ### Регистрация и вход
 
 | Метод | Путь | Описание |
 |---|---|---|
-| POST | `/api/register` | Регистрация: `role=user` или `role=photographer` (+ поля профиля) |
+| POST | `/api/register` | Регистрация: `role=user` или `role=photographer` (+ поля профиля); шлёт письмо-подтверждение (лимит 5/мин на IP) |
 | POST | `/api/login` | Вход (лимит 5 попыток в минуту на email+IP) |
 | POST | `/api/logout` | Выход: отзыв токена + инвалидация сессии |
+| GET | `/email/verify/{id}/{hash}` | Ссылка из письма: подтверждает почту и редиректит на страницу SPA |
 
 ## Модерация
 

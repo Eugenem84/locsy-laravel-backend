@@ -30,6 +30,15 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)
             ->by($request->input('email').'|'.$request->ip()));
 
+        // Регистрация: 5 запросов в минуту на IP — форма не должна становиться
+        // инструментом массового создания аккаунтов
+        RateLimiter::for('register', fn (Request $request) => Limit::perMinute(5)
+            ->by($request->ip()));
+
+        // Повторная отправка письма подтверждения: 3 в минуту на пользователя+IP
+        RateLimiter::for('verification', fn (Request $request) => Limit::perMinute(3)
+            ->by(($request->user()?->id ?: $request->ip()).'|'.$request->ip()));
+
         // Восстановление пароля: 5 запросов в минуту на email+IP — форма не должна
         // становиться инструментом спама письмами по чужому адресу
         RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)

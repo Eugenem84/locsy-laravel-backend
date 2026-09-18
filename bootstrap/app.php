@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,5 +29,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Понятный ответ SPA, когда действие требует подтверждённой почты
+        // (middleware `verified` для JSON-запроса отдаёт 403 этим сообщением).
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($request->expectsJson()
+                && $e->getStatusCode() === 403
+                && $e->getMessage() === 'Your email address is not verified.') {
+                return response()->json([
+                    'message' => 'Подтвердите почту, чтобы пользоваться аккаунтом.',
+                    'email_verified' => false,
+                ], 403);
+            }
+        });
     })->create();

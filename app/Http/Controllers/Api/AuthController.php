@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Photo;
 use App\Models\PhotographerProfile;
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -75,6 +76,15 @@ class AuthController extends Controller
                 'website' => $request->input('website'),
                 'is_active' => true,
             ]);
+        }
+
+        // Письмо с ссылкой на подтверждение адреса. Событие Registered слушает
+        // Laravel и отправляет VerifyEmailNotification. Сбой почты не должен
+        // ломать регистрацию — пишем в лог.
+        try {
+            event(new Registered($user));
+        } catch (Throwable $e) {
+            Log::warning('Verification email failed: '.$e->getMessage(), ['user_id' => $user->id]);
         }
 
         // Логиним пользователя сразу после регистрации

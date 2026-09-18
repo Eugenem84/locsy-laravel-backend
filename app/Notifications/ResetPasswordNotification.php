@@ -35,13 +35,13 @@ class ResetPasswordNotification extends Notification
             .'&email='.urlencode((string) $notifiable->email);
 
         $message = (new MailMessage)
-            ->subject('Locsy: сброс пароля')
-            ->greeting('Сброс пароля в Locsy')
+            ->subject('getlocsy: сброс пароля')
+            ->greeting('Сброс пароля в getlocsy')
             ->line('Вы запросили сброс пароля. Чтобы задать новый, нажмите кнопку ниже.')
             ->action('Задать новый пароль', $url)
             ->line('Ссылка действует 60 минут.')
             ->line('Если вы не запрашивали сброс пароля — просто проигнорируйте это письмо, пароль останется прежним.')
-            ->salutation('Locsy');
+            ->salutation('getlocsy');
 
         // Ответы приходят на живой ящик, а не на no-reply
         $replyTo = (string) config('mail.reply_to.address');

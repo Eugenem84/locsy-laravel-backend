@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\City;
 use App\Models\User;
+use App\Notifications\PasswordChangedNotification;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -94,6 +95,27 @@ class PasswordResetTest extends TestCase
         $this->assertTrue(Hash::check('new-password-456', $user->fresh()->password));
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'ivan@example.com']);
+    }
+
+    /**
+     * После смены пароля владельцу уходит уведомление: если смену инициировал
+     * не он, это шанс вовремя заметить взлом.
+     */
+    public function test_password_reset_notifies_user_about_change(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser();
+        $token = Password::broker()->createToken($user);
+
+        $this->postJson('/api/reset-password', [
+            'token' => $token,
+            'email' => 'ivan@example.com',
+            'password' => 'new-password-456',
+            'password_confirmation' => 'new-password-456',
+        ])->assertOk();
+
+        Notification::assertSentTo($user, PasswordChangedNotification::class);
     }
 
     /**

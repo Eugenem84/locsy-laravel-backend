@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\PasswordChangedNotification;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -83,6 +84,14 @@ class PasswordResetController extends Controller
                     }
 
                     event(new PasswordReset($user));
+
+                    // Предупреждаем владельца: смену пароля могли инициировать не он.
+                    // Сбой письма не должен ломать сброс.
+                    try {
+                        $user->notify(new PasswordChangedNotification);
+                    } catch (Throwable $e) {
+                        Log::warning('Password changed email failed: '.$e->getMessage(), ['user_id' => $user->id]);
+                    }
                 }
             );
         } catch (Throwable $e) {

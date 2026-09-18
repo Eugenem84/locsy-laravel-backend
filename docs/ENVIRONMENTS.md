@@ -130,7 +130,7 @@ ssh dev-vps 'curl -sS -o /dev/null -w "%{http_code}\n" https://locsy.dev.medovf2
 по cookie **и** по Bearer-токену, `/api/user/photos`, публичный `/api/cities`, набор PHP-расширений
 (`gd`, `imagick`, `pdo_pgsql`, `zip`), ключевые значения `APP_*` в `.env` (секреты маскируются) и статус контейнеров.
 
-## 8. Почта и восстановление пароля
+## 8. Почта, подтверждение адреса и восстановление пароля
 
 Отправка идёт **только через SMTP**: в образе `webdevops/php-nginx` нет `sendmail`,
 поэтому `MAIL_MAILER=sendmail` не вариант, а API-транспорты (`resend`, `mailgun`,
@@ -156,7 +156,7 @@ MAIL_PORT=465
 MAIL_USERNAME=no-reply@<домен>
 MAIL_PASSWORD=<пароль ящика>          # только в .env (600), не в git и не в отчётах
 MAIL_FROM_ADDRESS=no-reply@<домен>
-MAIL_FROM_NAME=Locsy
+MAIL_FROM_NAME=getlocsy
 MAIL_REPLY_TO_ADDRESS=dev@<домен>     # ответы пользователей уводим на живой ящик
 ```
 
@@ -179,6 +179,22 @@ MAIL_REPLY_TO_ADDRESS=dev@<домен>     # ответы пользовател
   администратора** у регистратора — иначе домен снимут с делегирования.
 - Пока зона не разошлась, `dig` может отдавать пустые ответы: у `.ru` negative-TTL 3600 с,
   поэтому после регистрации домена записи видны не сразу (до ~часа).
+
+### Подтверждение почты
+
+- Регистрация создаёт аккаунт и сразу шлёт `VerifyEmailNotification`: подписанная
+  ссылка (живёт 60 минут) на `GET /email/verify/{id}/{hash}`.
+- Ссылка ведёт на **бэкенд**, а Laravel после подтверждения редиректит на
+  `<FRONTEND_URL>/#/verify-email?status=verified|invalid` (SPA в hash-режиме).
+  Поэтому nginx контура обязан проксировать `/email/` в Laravel: для этого в
+  `nginx.conf` и `nginx.dev.conf` есть отдельный `location /email/` (иначе путь
+  уйдёт в SPA-фолбэк и подтверждение не сработает).
+- Пока адрес не подтверждён, функции аккаунта закрыты (middleware `verified`,
+  ответ `403` + `email_verified: false`). Доступны `GET /api/user` и повторная
+  отправка письма `POST /api/email/verification-notification` (лимит 3/мин на
+  пользователя+IP; регистрация — 5/мин на IP).
+- После подтверждения уходит `WelcomeNotification`; успешная смена пароля шлёт
+  `PasswordChangedNotification`.
 
 ### Как проверить
 
